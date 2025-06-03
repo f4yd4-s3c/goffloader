@@ -13,7 +13,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
-	"github.com/praetorian-inc/goffloader/src/memory"
+	"github.com/f4yd4-s3c/goffloader/src/memory"
 	"golang.org/x/sys/windows"
 	"strconv"
 	"strings"
