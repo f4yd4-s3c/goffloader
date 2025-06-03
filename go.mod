@@ -1,4 +1,4 @@
-module github.com/praetorian-inc/goffloader
+module github.com/f4yd4-s3c/goffloader
 
 go 1.22
 
