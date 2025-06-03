@@ -4,7 +4,7 @@ import (
 	_ "embed"
 	"fmt"
 
-	"github.com/praetorian-inc/goffloader/src/pe"
+	"github.com/f4yd4-s3c/goffloader/src/pe"
 )
 
 // code for this is in hello.c
